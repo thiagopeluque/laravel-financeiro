@@ -23,46 +23,37 @@
                                     </div>
                                     <div>
                                         <h3 class="text-lg font-semibold text-gray-900">{{ $card->nome }}</h3>
-                                        <p class="text-sm text-gray-500">{{ ucfirst($card->bandeira) }} •••• {{ $card->ultimos_digitos }}</p>
+                                        <p class="text-md text-gray-500">{{ ucfirst($card->bandeira) }} •••• {{ $card->ultimos_digitos }}</p>
                                         @if($card->fechamento_fatura && $card->vencimento_fatura)
-                                            <p class="text-xs text-gray-400 mt-1">Fechamento: dia {{ $card->fechamento_fatura }} • Vencimento: dia {{ $card->vencimento_fatura }}</p>
+                                            <p class="text-xs text-gray-400 mt-1">Fechamento: dia {{ $card->fechamento_fatura }}</p>
+                                            <p class="text-xs text-gray-400 mt-1">Vencimento: dia {{ $card->vencimento_fatura }}</p>
                                         @endif
                                     </div>
-                                </div>
-                                <div class="flex items-center gap-4">
+                                </div>                               
+                                <div class="gap-4 text-right">
+                                    <span class="text-md font-semibold rounded-full {{ $card->ativo ? 'text-green-800' : 'text-gray-800' }}">
+                                        {{ $card->ativo ? 'Ativo' : 'Inativo' }}
+                                    </span> 
                                     @if($card->limite)
                                         <div class="text-right mr-4">
                                             <div class="text-sm text-gray-500">Limite</div>
                                             <div class="font-medium">R$ {{ number_format($card->limite, 2, ',', '.') }}</div>
                                         </div>
                                     @endif
-                                    <span class="px-3 py-1 text-xs font-semibold rounded-full {{ $card->ativo ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
-                                        {{ $card->ativo ? 'Ativo' : 'Inativo' }}
-                                    </span>
                                 </div>
                             </div>
 
-                            @php
-                                $transacoesCartao = \App\Models\Transaction::where('card_id', $card->id)
-                                    ->whereMonth('data', date('m'))
-                                    ->whereYear('data', date('Y'))
-                                    ->with('category')
-                                    ->orderBy('data', 'desc')
-                                    ->get();
-                                $totalGastos = $transacoesCartao->sum('valor');
-                            @endphp
-
-                            @if($totalGastos > 0)
+                            @if($card->transactions->sum('valor') > 0)
                                 <div class="bg-red-50 rounded-lg p-4 mb-4">
                                     <div class="text-sm text-red-600">Total gasto este mês</div>
-                                    <div class="text-2xl font-bold text-red-700">R$ {{ number_format($totalGastos, 2, ',', '.') }}</div>
+                                    <div class="text-2xl font-bold text-red-700">R$ {{ number_format($card->transactions->sum('valor'), 2, ',', '.') }}</div>
                                 </div>
 
-                                @if($transacoesCartao->count() > 0)
+                                @if($card->transactions->count() > 0)
                                     <div class="border-t border-gray-200 pt-4">
                                         <h4 class="font-medium text-gray-900 mb-3">Últimas Compras</h4>
                                         <div class="space-y-2">
-                                            @foreach($transacoesCartao->take(10) as $transacao)
+                                            @foreach($card->transactions->take(10) as $transacao)
                                                 <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                                                     <div>
                                                         <div class="font-medium text-gray-900">{{ $transacao->descricao }}</div>
@@ -74,9 +65,9 @@
                                                 </div>
                                             @endforeach
                                         </div>
-                                        @if($transacoesCartao->count() > 10)
+                                        @if($card->transactions->count() > 10)
                                             <div class="mt-3 text-center">
-                                                <span class="text-sm text-gray-500">e mais {{ $transacoesCartao->count() - 10 }} transações...</span>
+                                                <span class="text-sm text-gray-500">e mais {{ $card->transactions->count() - 10 }} transações...</span>
                                             </div>
                                         @endif
                                     </div>

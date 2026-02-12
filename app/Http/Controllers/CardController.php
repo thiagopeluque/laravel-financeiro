@@ -10,7 +10,15 @@ class CardController extends Controller
 {
     public function index()
     {
-        $cards = Auth::user()->cards()->orderBy('nome')->paginate(12);
+        $cards = Auth::user()->cards()
+            ->with(['transactions' => function ($q) {
+                $q->whereMonth('data', date('m'))
+                    ->whereYear('data', date('Y'))
+                    ->with('category')
+                    ->orderBy('data', 'desc');
+            }])
+            ->orderBy('nome')
+            ->paginate(12);
 
         return view('cards.index', compact('cards'));
     }
