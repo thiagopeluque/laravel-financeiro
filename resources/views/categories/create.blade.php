@@ -32,17 +32,6 @@
                             @enderror
                         </div>
 
-                        <div class="mb-4">
-                            <label for="cor" class="block text-sm font-medium text-gray-700">Cor</label>
-                            <div class="flex items-center gap-2 mt-1">
-                                <input type="color" name="cor" id="cor" value="{{ old('cor', '#3b82f6') }}" class="h-10 w-10 rounded border border-gray-300">
-                                <span class="text-sm text-gray-500">Selecione uma cor</span>
-                            </div>
-                            @error('cor')
-                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
-
                         <div class="flex justify-end gap-3">
                             <a href="{{ route('categories.index') }}" class="inline-flex items-center px-4 py-2 bg-gray-300 border border-transparent rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
                                 Cancelar
