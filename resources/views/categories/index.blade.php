@@ -26,7 +26,6 @@
                                 <tr>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cor</th>
                                     <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
                                 </tr>
                             </thead>
@@ -40,12 +39,6 @@
                                             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ $category->tipo == 'receita' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
                                                 {{ ucfirst($category->tipo) }}
                                             </span>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="flex items-center gap-2">
-                                                <div class="w-6 h-6 rounded" style="background-color: {{ $category->cor }}"></div>
-                                                <span class="text-sm text-gray-500">{{ $category->cor }}</span>
-                                            </div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             <a href="{{ route('categories.edit', $category) }}" class="text-indigo-600 hover:text-indigo-900 mr-3">Editar</a>

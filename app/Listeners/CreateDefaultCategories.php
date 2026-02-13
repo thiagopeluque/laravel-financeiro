@@ -70,8 +70,7 @@ class CreateDefaultCategories
             Category::create([
                 'user_id' => $user->id,
                 'nome' => $category['nome'],
-                'tipo' => $category['tipo'],
-                'cor' => $category['tipo'] === 'receita' ? '#16a34a' : '#dc2626',
+                'tipo' => $category['tipo']
             ]);
         }
     }
