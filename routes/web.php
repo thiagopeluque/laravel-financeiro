@@ -4,6 +4,7 @@ use App\Http\Controllers\CardController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\TelegramController;
 use App\Http\Controllers\TransactionController;
 use Illuminate\Support\Facades\Route;
 
@@ -17,6 +18,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::get('/profile/telegram', [ProfileController::class, 'telegram'])->name('profile.telegram');
+    Route::patch('/profile/telegram', [ProfileController::class, 'updateTelegram'])->name('profile.telegram.update');
 });
+
+Route::post('/api/telegram/webhook', [TelegramController::class, 'handleTelegramMessage']);
 
 require __DIR__.'/auth.php';

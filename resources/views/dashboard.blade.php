@@ -139,7 +139,7 @@
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-            <form method="GET" class="bg-white p-4 rounded-lg shadow sm:rounded-lg flex items-center justify-center gap-4">
+            <form method="GET" class="bg-white p-4 rounded-lg shadow sm:rounded-lg flex flex-wrap items-end gap-4">
                 <div>
                     <label for="mes" class="block text-sm font-medium text-gray-700">Mês</label>
                     <select name="mes" id="mes" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
