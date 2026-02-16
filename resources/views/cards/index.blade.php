@@ -31,7 +31,7 @@
                                     </div>
                                 </div>                               
                                 <div class="gap-4 text-right">
-                                    <span class="text-md font-semibold rounded-full {{ $card->ativo ? 'text-green-800' : 'text-gray-800' }}">
+                                    <span class="text-md font-semibold rounded-full text-right mr-4 {{ $card->ativo ? 'text-green-800' : 'text-gray-800' }}">
                                         {{ $card->ativo ? 'Ativo' : 'Inativo' }}
                                     </span> 
                                     @if($card->limite)
