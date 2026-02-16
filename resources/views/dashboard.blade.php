@@ -75,6 +75,22 @@
                             <label for="observacoes" class="block text-sm font-medium text-gray-700">Observações</label>
                             <textarea name="observacoes" id="observacoes" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="Informações adicionais..."></textarea>
                         </div>
+
+                        <div class="mb-4 border-t pt-4">
+                            <div class="flex items-center">
+                                <input type="checkbox" name="recorrente" id="recorrente" value="1" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" onchange="toggleRecorrente()">
+                                <label for="recorrente" class="ml-2 block text-sm font-medium text-gray-700">
+                                    Lançamento Recorrente
+                                </label>
+                            </div>
+                            <p class="mt-1 text-xs text-gray-500">Marque esta opção para repetir esta transação mensalmente</p>
+                        </div>
+
+                        <div id="recorrente-options" class="mb-4 hidden">
+                            <label for="recorrente_ate" class="block text-sm font-medium text-gray-700">Até qual Mês / Ano</label>
+                            <input type="month" name="recorrente_ate" id="recorrente_ate" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                            <p class="mt-1 text-xs text-gray-500">Escolha até qual mês a transação deve ser lançada automaticamente</p>
+                        </div>
                     </div>
 
                     <div class="flex justify-end gap-3 mb-4">
@@ -99,6 +115,24 @@
             } else {
                 parcelasContainer.classList.add('hidden');
                 document.getElementById('parcelas').value = 1;
+            }
+        }
+
+        function toggleRecorrente() {
+            const recorrenteCheckbox = document.getElementById('recorrente');
+            const recorrenteOptions = document.getElementById('recorrente-options');
+            if (recorrenteCheckbox.checked) {
+                recorrenteOptions.classList.remove('hidden');
+                const today = new Date();
+                const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+                const month = nextMonth.getMonth() + 1;
+                const year = nextMonth.getFullYear();
+                const defaultDate = year + '-' + String(month).padStart(2, '0');
+                if (!document.getElementById('recorrente_ate').value) {
+                    document.getElementById('recorrente_ate').value = defaultDate;
+                }
+            } else {
+                recorrenteOptions.classList.add('hidden');
             }
         }
     </script>

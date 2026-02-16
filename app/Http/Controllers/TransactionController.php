@@ -47,6 +47,8 @@ class TransactionController extends Controller
             'data' => 'required|date',
             'observacoes' => 'nullable|string',
             'parcelas' => 'nullable|integer|min:1|max:120',
+            'recorrente' => 'nullable|boolean',
+            'recorrente_ate' => 'nullable|date|after_or_equal:data',
         ]);
 
         $category = Category::find($request->category_id);
@@ -61,6 +63,9 @@ class TransactionController extends Controller
                 abort(403);
             }
         }
+
+        $isRecurring = $request->boolean('recorrente');
+        $recorrenteAte = $request->recorrente_ate;
 
         $parcelas = $request->parcelas ?? 1;
         $valorParcela = $request->valor / $parcelas;
@@ -79,6 +84,9 @@ class TransactionController extends Controller
                 'total_parcelas' => $parcelas,
                 'parcela_atual' => $i + 1,
                 'transacao_pai_id' => null,
+                'recorrente' => $isRecurring,
+                'recorrente_ate' => $isRecurring ? $recorrenteAte : null,
+                'recorrente_ativa' => $isRecurring,
             ];
 
             if ($i === 0 && $parcelas > 1) {
@@ -89,11 +97,66 @@ class TransactionController extends Controller
                 $transactionData['transacao_pai_id'] = $parentTransaction->id;
                 Auth::user()->transactions()->create($transactionData);
             } else {
-                Auth::user()->transactions()->create($transactionData);
+                $parentTransaction = Auth::user()->transactions()->create($transactionData);
             }
         }
 
+        if ($isRecurring && $parcelas === 1) {
+            $this->createRecurringInstances($parentTransaction, $card, $recorrenteAte);
+        }
+
         return redirect()->route('dashboard')->with('success', 'Transação criada com sucesso.');
+    }
+
+    private function createRecurringInstances(Transaction $parentTransaction, ?Card $card, string $recorrenteAte): void
+    {
+        $currentDate = new \DateTime($parentTransaction->data);
+        $endDate = new \DateTime($recorrenteAte);
+
+        while ($currentDate < $endDate) {
+            $currentDate->modify('+1 month');
+
+            if ($currentDate > $endDate) {
+                break;
+            }
+
+            $dataTransacao = $this->calculateRecurringDate(
+                $parentTransaction->data,
+                (int) $currentDate->format('n'),
+                (int) $currentDate->format('Y'),
+                $card
+            );
+
+            Auth::user()->transactions()->create([
+                'user_id' => Auth::id(),
+                'category_id' => $parentTransaction->category_id,
+                'card_id' => $parentTransaction->card_id,
+                'valor' => $parentTransaction->valor,
+                'descricao' => $parentTransaction->descricao,
+                'data' => $dataTransacao,
+                'observacoes' => $parentTransaction->observacoes,
+                'total_parcelas' => 1,
+                'parcela_atual' => 1,
+                'transacao_pai_id' => null,
+                'recorrente' => false,
+                'recorrente_ate' => null,
+                'transacao_recorrente_pai_id' => $parentTransaction->id,
+                'recorrente_ativa' => true,
+            ]);
+        }
+    }
+
+    private function calculateRecurringDate(string $initialDate, int $month, int $year, ?Card $card): string
+    {
+        $initial = new \DateTime($initialDate);
+        $date = new \DateTime;
+        $date->setDate($year, $month, (int) $initial->format('j'));
+
+        if ($card && $card->vencimento_fatura) {
+            $date->setDate($year, $month, $card->vencimento_fatura);
+        }
+
+        return $date->format('Y-m-d');
     }
 
     private function calculateInstallmentDate(string $initialDate, int $installmentIndex, ?Card $card): string
@@ -130,6 +193,10 @@ class TransactionController extends Controller
     {
         $this->authorizeUser($transaction);
 
+        if ($transaction->isRecurringChild()) {
+            return redirect()->route('transactions.index')->with('error', 'Transações geradas automaticamente não podem ser editadas.');
+        }
+
         $validated = $request->validate([
             'category_id' => 'required|exists:categories,id',
             'card_id' => 'nullable|exists:cards,id',
@@ -137,6 +204,8 @@ class TransactionController extends Controller
             'descricao' => 'required|string|max:255',
             'data' => 'required|date',
             'observacoes' => 'nullable|string',
+            'recorrente' => 'nullable|boolean',
+            'recorrente_ate' => 'nullable|date|after_or_equal:data',
         ]);
 
         $category = Category::find($request->category_id);
@@ -151,9 +220,64 @@ class TransactionController extends Controller
             }
         }
 
-        $transaction->update($validated);
+        $isRecurring = $request->boolean('recorrente');
+        $recorrenteAte = $request->recorrente_ate;
 
-        return redirect()->route('dashboard')->with('success', 'Transação atualizada com sucesso.');
+        $updateData = [
+            'category_id' => $request->category_id,
+            'card_id' => $request->card_id,
+            'valor' => $request->valor,
+            'descricao' => $request->descricao,
+            'data' => $request->data,
+            'observacoes' => $request->observacoes,
+            'recorrente' => $isRecurring,
+            'recorrente_ate' => $isRecurring ? $recorrenteAte : null,
+            'recorrente_ativa' => $isRecurring,
+        ];
+
+        $wasRecurring = $transaction->recorrente;
+        $transaction->update($updateData);
+
+        if ($isRecurring && $recorrenteAte) {
+            $this->updateRecurringInstances($transaction, $recorrenteAte);
+        } elseif ($wasRecurring && ! $isRecurring) {
+            $transaction->recurringChildren()->update(['recorrente_ativa' => false]);
+        }
+
+        return redirect()->route('transactions.index')->with('success', 'Transação atualizada com sucesso.');
+    }
+
+    private function updateRecurringInstances(Transaction $parentTransaction, string $recorrenteAte): void
+    {
+        $parentTransaction->recurringChildren()->delete();
+
+        $endDate = new \DateTime($recorrenteAte);
+        $currentDate = new \DateTime($parentTransaction->data);
+
+        while ($currentDate < $endDate) {
+            $currentDate->modify('+1 month');
+
+            if ($currentDate > $endDate) {
+                break;
+            }
+
+            Auth::user()->transactions()->create([
+                'user_id' => Auth::id(),
+                'category_id' => $parentTransaction->category_id,
+                'card_id' => $parentTransaction->card_id,
+                'valor' => $parentTransaction->valor,
+                'descricao' => $parentTransaction->descricao,
+                'data' => $currentDate->format('Y-m-d'),
+                'observacoes' => $parentTransaction->observacoes,
+                'total_parcelas' => 1,
+                'parcela_atual' => 1,
+                'transacao_pai_id' => null,
+                'recorrente' => false,
+                'recorrente_ate' => null,
+                'transacao_recorrente_pai_id' => $parentTransaction->id,
+                'recorrente_ativa' => true,
+            ]);
+        }
     }
 
     public function destroy(Transaction $transaction)

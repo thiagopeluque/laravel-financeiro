@@ -19,6 +19,10 @@ class Transaction extends Model
         'total_parcelas',
         'parcela_atual',
         'transacao_pai_id',
+        'recorrente',
+        'recorrente_ate',
+        'transacao_recorrente_pai_id',
+        'recorrente_ativa',
     ];
 
     protected $casts = [
@@ -26,6 +30,9 @@ class Transaction extends Model
         'data' => 'date',
         'total_parcelas' => 'integer',
         'parcela_atual' => 'integer',
+        'recorrente' => 'boolean',
+        'recorrente_ate' => 'date',
+        'recorrente_ativa' => 'boolean',
     ];
 
     public function user(): BelongsTo
@@ -53,9 +60,34 @@ class Transaction extends Model
         return $this->hasMany(Transaction::class, 'transacao_pai_id');
     }
 
+    public function recurringParent(): BelongsTo
+    {
+        return $this->belongsTo(Transaction::class, 'transacao_recorrente_pai_id');
+    }
+
+    public function recurringChildren(): HasMany
+    {
+        return $this->hasMany(Transaction::class, 'transacao_recorrente_pai_id');
+    }
+
     public function isInstallment(): bool
     {
         return $this->total_parcelas !== null && $this->total_parcelas > 1;
+    }
+
+    public function isRecurring(): bool
+    {
+        return $this->recorrente === true;
+    }
+
+    public function isRecurringChild(): bool
+    {
+        return $this->transacao_recorrente_pai_id !== null;
+    }
+
+    public function isRecurringActive(): bool
+    {
+        return $this->recorrente_ativa === true;
     }
 
     public function getInstallmentDescription(): string

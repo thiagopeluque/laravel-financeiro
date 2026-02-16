@@ -23,8 +23,7 @@ class CategoryController extends Controller
     {
         $validated = $request->validate([
             'nome' => 'required|string|max:255',
-            'tipo' => 'required|in:receita,despesa',
-            'cor' => 'nullable|string|max:7',
+            'tipo' => 'required|in:receita,despesa'
         ]);
 
         Auth::user()->categories()->create($validated);
@@ -44,8 +43,7 @@ class CategoryController extends Controller
 
         $validated = $request->validate([
             'nome' => 'required|string|max:255',
-            'tipo' => 'required|in:receita,despesa',
-            'cor' => 'nullable|string|max:7',
+            'tipo' => 'required|in:receita,despesa'
         ]);
 
         $category->update($validated);
