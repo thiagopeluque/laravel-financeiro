@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 use App\Models\User;
 use App\Services\TelegramService;
 
@@ -12,10 +13,20 @@ class TelegramController extends Controller
     public function handleTelegramMessage(Request $request): JsonResponse
     {
         $data = $request->all();
+        
+        // Log para debug - salva o payload completo do Telegram
+        \Log::channel('telegram')->info('Webhook recebido', [
+            'payload' => $data,
+            'headers' => $request->headers->all(),
+            'ip' => $request->ip(),
+            'timestamp' => now()->toDateTimeString()
+        ]);
+        
         $message = $data['message'] ?? null;
 
         if (!$message) {
-            return response()->json(['status' => 'error'], 400);
+            \Log::channel('telegram')->warning('Mensagem não encontrada no payload', ['data' => $data]);
+            return response()->json(['status' => 'error', 'message' => 'No message in payload'], 400);
         }
 
         $chatId = $message['chat']['id'];

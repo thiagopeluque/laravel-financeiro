@@ -123,6 +123,69 @@
                     </section>
                 </div>
             </div>
+
+            <div class="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
+                <div class="max-w-xl">
+                    <section>
+                        <header>
+                            <h2 class="text-lg font-medium text-gray-900">
+                                {{ __('Diagnóstico e Debug') }}
+                            </h2>
+                        </header>
+
+                        <div class="mt-4 text-sm text-gray-600 space-y-4">
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <p class="font-medium mb-2">{{ __('Status da Configuração:') }}</p>
+                                <ul class="space-y-1">
+                                    <li>
+                                        <span class="inline-block w-3 h-3 rounded-full {{ $user->telegram_enabled ? 'bg-green-500' : 'bg-red-500' }} mr-2"></span>
+                                        {{ __('Integração:') }} {{ $user->telegram_enabled ? 'Ativada' : 'Desativada' }}
+                                    </li>
+                                    <li>
+                                        <span class="inline-block w-3 h-3 rounded-full {{ $user->telegram_chat_id ? 'bg-green-500' : 'bg-red-500' }} mr-2"></span>
+                                        {{ __('Chat ID:') }} {{ $user->telegram_chat_id ?? 'Não configurado' }}
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                <p class="font-medium mb-2 text-blue-800">{{ __('Ferramentas de Debug:') }}</p>
+                                <ul class="space-y-2 text-blue-700">
+                                    <li>
+                                        <a href="/api/telegram/debug" target="_blank" class="underline hover:text-blue-900">
+                                            {{ __('→ Ver logs do webhook') }}
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="/api/telegram/test" target="_blank" class="underline hover:text-blue-900">
+                                            {{ __('→ Gerar payload de teste') }}
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                                <p class="font-medium mb-2 text-yellow-800">{{ __('Como verificar se está funcionando:') }}</p>
+                                <ol class="list-decimal list-inside space-y-1 text-yellow-700">
+                                    <li>{{ __('Envie uma mensagem pelo Telegram') }}</li>
+                                    <li>{{ __('Clique em "Ver logs do webhook" acima') }}</li>
+                                    <li>{{ __('Verifique se apareceu uma entrada no log') }}</li>
+                                    <li>{{ __('Se não aparecer, verifique se o webhook está configurado:') }} <code class="bg-yellow-100 px-1">php artisan telegram:set-webhook</code></li>
+                                </ol>
+                            </div>
+
+                            <div class="bg-gray-100 p-4 rounded-lg">
+                                <p class="font-medium mb-2">{{ __('Comandos úteis no terminal:') }}</p>
+                                <code class="block bg-black text-green-400 p-3 rounded text-xs overflow-x-auto">
+php artisan telegram:set-webhook<br>
+php artisan telegram:monitor<br>
+tail -f storage/logs/telegram.log
+                                </code>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </div>
         </div>
     </div>
 </x-app-layout>
