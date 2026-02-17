@@ -2,109 +2,86 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\ProcessTelegramMessage;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use App\Models\User;
-use App\Services\TelegramService;
 
 class TelegramController extends Controller
 {
+    /**
+     * Handle incoming Telegram webhook
+     * Responde imediatamente com 200 OK e processa em background
+     */
     public function handleTelegramMessage(Request $request): JsonResponse
     {
         $data = $request->all();
-        
-        // Log para debug - salva o payload completo do Telegram
-        \Log::channel('telegram')->info('Webhook recebido', [
-            'payload' => $data,
-            'headers' => $request->headers->all(),
-            'ip' => $request->ip(),
-            'timestamp' => now()->toDateTimeString()
-        ]);
-        
+        $updateId = $data['update_id'] ?? null;
         $message = $data['message'] ?? null;
 
-        if (!$message) {
-            \Log::channel('telegram')->warning('Mensagem não encontrada no payload', ['data' => $data]);
-            return response()->json(['status' => 'error', 'message' => 'No message in payload'], 400);
-        }
-
-        $chatId = $message['chat']['id'];
-        $text = $message['text'];
-        
-        \Log::channel('telegram')->info('Processando mensagem', [
-            'chat_id' => $chatId,
-            'text' => $text,
-            'from' => $message['from'] ?? null
+        // Log básico para debug
+        Log::channel('telegram')->info('Webhook recebido', [
+            'update_id' => $updateId,
+            'has_message' => !is_null($message),
+            'timestamp' => now()->toDateTimeString()
         ]);
-        
-        // Ignorar comandos do bot (começam com /)
-        if (str_starts_with($text, '/')) {
-            \Log::channel('telegram')->info('Comando do bot ignorado', ['command' => $text]);
-            return response()->json(['status' => 'ignored', 'message' => 'Bot commands are ignored']);
+
+        // Validar payload
+        if (!$updateId || !$message) {
+            Log::channel('telegram')->warning('Payload inválido', ['data' => array_keys($data)]);
+            return response()->json(['status' => 'ignored'], 200);
         }
 
-        $user = User::where('telegram_chat_id', $chatId)
-                    ->where('telegram_enabled', true)
-                    ->first();
+        // Verificar duplicata (Telegram pode reenviar)
+        $cacheKey = "telegram_update_{$updateId}";
+        if (Cache::has($cacheKey)) {
+            Log::channel('telegram')->info('Update duplicado ignorado', ['update_id' => $updateId]);
+            return response()->json(['status' => 'already_processed'], 200);
+        }
 
-        if (!$user) {
-            \Log::channel('telegram')->warning('Usuário não encontrado ou desativado', [
+        // Marcar como processado (evita duplicatas por 1 hora)
+        Cache::put($cacheKey, true, now()->addHour());
+
+        $chatId = $message['chat']['id'] ?? null;
+        $text = $message['text'] ?? null;
+
+        if (!$chatId || !$text) {
+            Log::channel('telegram')->warning('Dados da mensagem incompletos', [
                 'chat_id' => $chatId,
-                'text' => $text
+                'has_text' => !is_null($text)
             ]);
-            return response()->json(['status' => 'user not found'], 404);
+            return response()->json(['status' => 'invalid_data'], 200);
         }
-        
-        \Log::channel('telegram')->info('Usuário encontrado', [
-            'user_id' => $user->id,
-            'user_name' => $user->name,
-            'chat_id' => $chatId
+
+        // Ignorar comandos do bot
+        if (str_starts_with($text, '/')) {
+            Log::channel('telegram')->info('Comando ignorado', [
+                'command' => $text,
+                'update_id' => $updateId
+            ]);
+            return response()->json(['status' => 'command_ignored'], 200);
+        }
+
+        // Log da mensagem recebida
+        Log::channel('telegram')->info('Mensagem válida recebida', [
+            'update_id' => $updateId,
+            'chat_id' => $chatId,
+            'text' => $text
         ]);
 
-        $telegramService = app(TelegramService::class);
+        // Despachar job para processamento assíncrono
+        // Isso garante que respondemos 200 OK imediatamente ao Telegram
+        ProcessTelegramMessage::dispatch($updateId, $chatId, $text, $message);
 
-        try {
-            \Log::channel('telegram')->info('Iniciando parse da mensagem', ['text' => $text]);
-            $parsed = $telegramService->parseMessage($text);
-            
-            \Log::channel('telegram')->info('Mensagem parseada', [
-                'valor' => $parsed['valor'],
-                'descricao' => $parsed['descricao'],
-                'tipo' => $parsed['tipo']
-            ]);
-            
-            $category = $telegramService->detectCategory($parsed['descricao'], $user->id, $parsed['tipo']);
-            
-            \Log::channel('telegram')->info('Categoria detectada/criada', [
-                'category_id' => $category->id,
-                'category_name' => $category->nome
-            ]);
+        Log::channel('telegram')->info('Job despachado', ['update_id' => $updateId]);
 
-            $transaction = $telegramService->createTransaction([
-                'valor' => $parsed['valor'],
-                'descricao' => $parsed['descricao'],
-                'tipo' => $parsed['tipo'],
-                'categoria' => $category,
-                'card_id' => $user->telegram_default_card_id,
-            ], $user);
-            
-            \Log::channel('telegram')->info('Transação criada com sucesso', [
-                'transaction_id' => $transaction->id,
-                'valor' => $transaction->valor
-            ]);
-
-            $telegramService->sendConfirmation($chatId, $transaction);
-            
-            \Log::channel('telegram')->info('Confirmação enviada ao Telegram');
-
-            return response()->json(['status' => 'success']);
-        } catch (\Exception $e) {
-            \Log::channel('telegram')->error('Erro ao processar mensagem', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
-        }
+        // Responder imediatamente com sucesso
+        // Isso evita que o Telegram reenvie a mensagem
+        return response()->json([
+            'status' => 'accepted',
+            'update_id' => $updateId,
+            'message' => 'Processando em background'
+        ], 200);
     }
 }
