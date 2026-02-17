@@ -66,8 +66,10 @@ class CardController extends Controller
             'limite' => 'nullable|numeric|min:0',
             'fechamento_fatura' => 'nullable|integer|min:1|max:31',
             'vencimento_fatura' => 'nullable|integer|min:1|max:31',
-            'ativo' => 'boolean',
         ]);
+
+        // Garante que 'ativo' seja sempre definido (true ou false)
+        $validated['ativo'] = $request->has('ativo');
 
         if (isset($validated['limite']) && $card->limite !== $validated['limite']) {
             $diferenca = $validated['limite'] - $card->limite;
