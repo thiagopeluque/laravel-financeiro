@@ -16,31 +16,103 @@ class TelegramService
         
         $tipo = 'despesa';
         
+        // Verifica se é receita pelo início da mensagem
         if (strtolower($words[0]) === 'recebi') {
             $tipo = 'receita';
             array_shift($words);
-            $text = implode(' ', $words);
         }
         
-        preg_match('/(\d+[.,]?\d*(?:[.,]\d{2})?)/', $text, $matches);
+        // Encontra o valor e sua posição
+        $valorEncontrado = false;
+        $valorStr = '';
+        $valorPos = -1;
         
-        if (!isset($matches[1])) {
+        foreach ($words as $index => $word) {
+            // Remove símbolo de moeda se estiver junto
+            $cleanWord = preg_replace('/^[rR]?[$]?/', '', $word);
+            
+            if (preg_match('/^\d+[.,]?\d*[.,]?\d*$/', $cleanWord) && strlen($cleanWord) > 0) {
+                $valorStr = $cleanWord;
+                $valorPos = $index;
+                $valorEncontrado = true;
+                break;
+            }
+        }
+        
+        if (!$valorEncontrado) {
             throw new \Exception('Valor não encontrado na mensagem');
         }
         
-        $valorStr = $matches[1];
         $valor = $this->parseValor($valorStr);
         
-        $descricao = trim(str_replace($matches[0], '', $text));
-        $descricao = preg_replace('/^\s*no\s+/i', '', $descricao);
-        $descricao = preg_replace('/^\s*na\s+/i', '', $descricao);
-        $descricao = ucfirst($descricao);
+        // Palavras a ignorar ao buscar a descrição
+        $palavrasIgnoradas = [
+            'reais', 'real', 'r$',
+            'de', 'do', 'da', 'dos', 'das',
+            'em', 'no', 'na', 'nos', 'nas',
+            'por', 'para', 'pro', 'pra',
+            'um', 'uma', 'uns', 'umas',
+            'o', 'a', 'os', 'as',
+            'gastei', 'paguei', 'coloquei', 'botei',
+            'foi', 'deu', 'custou', 'ficou'
+        ];
+        
+        // Busca palavra significativa ao redor do valor
+        $palavraDescricao = '';
+        
+        // Primeiro tenta a palavra depois do valor
+        if (isset($words[$valorPos + 1])) {
+            $proximaPalavra = strtolower($words[$valorPos + 1]);
+            if (!in_array($proximaPalavra, $palavrasIgnoradas) && strlen($proximaPalavra) >= 3) {
+                $palavraDescricao = $words[$valorPos + 1];
+            }
+        }
+        
+        // Se não encontrou depois, tenta a palavra antes do valor
+        if (empty($palavraDescricao) && $valorPos > 0) {
+            $palavraAnterior = strtolower($words[$valorPos - 1]);
+            if (!in_array($palavraAnterior, $palavrasIgnoradas) && strlen($palavraAnterior) >= 3) {
+                $palavraDescricao = $words[$valorPos - 1];
+            }
+        }
+        
+        // Se ainda não encontrou, percorre todas as palavras
+        if (empty($palavraDescricao)) {
+            foreach ($words as $word) {
+                $wordLower = strtolower($word);
+                if (!in_array($wordLower, $palavrasIgnoradas) && strlen($wordLower) >= 3) {
+                    // Verifica se não é o valor
+                    if (!preg_match('/^\d+[.,]?\d*[.,]?\d*$/', preg_replace('/^[rR]?[$]?/', '', $word))) {
+                        $palavraDescricao = $word;
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // Se ainda não encontrou, usa a primeira palavra significativa
+        if (empty($palavraDescricao)) {
+            foreach ($words as $word) {
+                $wordLower = strtolower($word);
+                if (strlen($wordLower) >= 3 && !preg_match('/^\d/', $word)) {
+                    $palavraDescricao = $word;
+                    break;
+                }
+            }
+        }
+        
+        // Fallback final
+        if (empty($palavraDescricao)) {
+            $palavraDescricao = 'Transação';
+        }
+        
+        $descricao = ucfirst(strtolower($palavraDescricao));
         
         return [
             'valor' => $valor,
             'descricao' => $descricao,
             'tipo' => $tipo,
-            'palavras' => explode(' ', strtolower($descricao)),
+            'palavras' => [$descricao],
         ];
     }
     
