@@ -119,20 +119,6 @@
                                 <li>{{ __('O valor pode ser com ou sem casas decimais') }}</li>
                                 <li>{{ __('A categoria será detectada automaticamente ou criada se não existir') }}</li>
                             </ul>
-
-                            <div class="mt-6 bg-gray-50 p-4 rounded-lg">
-                                <p class="font-medium mb-2">{{ __('Status da Configuração:') }}</p>
-                                <ul class="space-y-1">
-                                    <li>
-                                        <span class="inline-block w-3 h-3 rounded-full {{ $user->telegram_enabled ? 'bg-green-500' : 'bg-red-500' }} mr-2"></span>
-                                        {{ __('Integração:') }} {{ $user->telegram_enabled ? 'Ativada' : 'Desativada' }}
-                                    </li>
-                                    <li>
-                                        <span class="inline-block w-3 h-3 rounded-full {{ $user->telegram_chat_id ? 'bg-green-500' : 'bg-red-500' }} mr-2"></span>
-                                        {{ __('Chat ID:') }} {{ $user->telegram_chat_id ?? 'Não configurado' }}
-                                    </li>
-                                </ul>
-                            </div>
                         </div>
                     </section>
                 </div>
