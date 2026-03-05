@@ -5,7 +5,7 @@ WORKDIR /var/www/html
 COPY . .
 
 # Instala dependências PHP
-RUN composer update --no-dev --optimize-autoloader --no-interaction
+RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 # Build do frontend
 RUN npm install && npm run build
